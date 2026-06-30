@@ -27,7 +27,7 @@ pour chaque source, on isole la complexite dans un moteur commun :
 - calcul d'indicateurs ;
 - detection d'anomalies ;
 - exposition des resultats via une API ;
-- visualisation dans une interface simple.
+- visualisation dans une application desktop de type logiciel industriel.
 
 L'interet pour un editeur qui possede plusieurs logiciels metier est la
 reutilisabilite. Le meme principe peut servir Logiviande, Silos, LSA, Comptinnov ou
@@ -38,7 +38,7 @@ d'autres modules, sans repartir de zero a chaque nouveau flux.
 Le coeur du projet est un moteur generique :
 
 ```text
-Adapter -> Normalisation -> Calculs metier -> Detection d'anomalies -> API -> Dashboard
+Adapter -> Normalisation -> Calculs metier -> Detection d'anomalies -> API -> GUI desktop
 ```
 
 Le point important est que le moteur est pense pour etre reutilisable. Logiviande et
@@ -107,9 +107,10 @@ ETL, adapters, normalisation, detection d'anomalies, option LLM
 Java / Spring Boot
 API REST, orchestration applicative, persistance
         |
+        | HTTP / JSON
         v
-Streamlit
-Upload, choix du module, choix de l'adapter, dashboard et alertes
+PySide6
+Application desktop, pupitre operateur, tables, alarmes, journal machine
 ```
 
 Le module Python porte la logique data : lecture des fichiers, mapping des colonnes,
@@ -122,9 +123,10 @@ il pourra exposer des routes comme :
 - `GET /lots/{id}` pour consulter un lot ;
 - `GET /lots/alertes` pour consulter les alertes detectees.
 
-Le module Streamlit porte l'experience de demonstration : upload d'un fichier,
-selection du module Logiviande ou Silos, choix entre adapter classique et adapter
-LLM, puis affichage des resultats et alertes.
+Le module desktop PySide6 porte l'experience utilisateur locale. Ce n'est pas une
+interface web : il s'agit d'une vraie fenetre de logiciel, pensee comme une console
+operateur industrielle, avec des panneaux d'etat, des tables, des alarmes, des
+boutons de cycle et un journal machine.
 
 ## Modules du depot
 
@@ -143,7 +145,7 @@ agro-normalizer/
       model/
       repository/
       LotsApiApplication.java
-  streamlit/
+  desktop/
     app.py
   data/
     samples/
@@ -160,6 +162,9 @@ Contiendra le moteur ETL et IA :
 - detection d'anomalies ;
 - tests unitaires.
 
+Le fichier `python/requirements.txt` contient aussi la dependance PySide6 pour
+l'application desktop.
+
 ### `java/`
 
 Contient le projet Maven Spring Boot `lots-api`, avec le groupId
@@ -169,12 +174,13 @@ Pour l'instant, le module ne contient qu'une application Spring Boot minimale qu
 compile et demarre. Les packages `model`, `repository` et `controller` sont presents
 pour preparer l'architecture, mais ils ne contiennent pas encore de classes metier.
 
-### `streamlit/`
+### `desktop/`
 
-Contient l'application Streamlit de demonstration. Aujourd'hui, elle affiche
-seulement une page minimale. A terme, elle servira d'interface pour uploader des
-fichiers, choisir le module metier, comparer les deux strategies d'adaptation et
-visualiser les alertes.
+Contient l'application PySide6. L'interface actuelle est une maquette executable de
+console operateur : volontairement dense, brute et proche d'un logiciel industriel,
+plutot qu'une page web.
+
+Elle ne lance pas de serveur et ne depend pas d'un navigateur.
 
 ### `data/samples/`
 
@@ -183,11 +189,11 @@ le fonctionnement du moteur.
 
 ## Etat actuel
 
-Le depot contient uniquement le squelette technique :
+Le depot contient uniquement le squelette technique et une premiere GUI desktop :
 
 - arborescence Python ;
 - projet Spring Boot Maven minimal ;
-- application Streamlit minimale ;
+- application PySide6 minimale ;
 - dossier de samples ;
 - configuration `.gitignore` ;
 - documentation initiale.
@@ -197,6 +203,20 @@ Aucune classe metier n'est encore implementee. Il n'y a pas encore de modele
 d'endpoint REST.
 
 ## Comment lancer
+
+### Installer les dependances Python
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r python/requirements.txt
+```
+
+### Application desktop PySide6
+
+```bash
+python desktop/app.py
+```
 
 ### API Spring Boot
 
@@ -212,30 +232,14 @@ cd java
 mvn clean install
 ```
 
-### Application Streamlit
-
-Installer les dependances Python :
-
-```bash
-cd python
-pip install -r requirements.txt
-```
-
-Lancer l'interface :
-
-```bash
-cd ../streamlit
-streamlit run app.py
-```
-
 ## Vision
 
 Le projet doit montrer trois competences dans un meme fil conducteur :
 
 - Python pour la partie ETL, data et IA ;
 - Java / Spring Boot pour l'API, la persistance et l'architecture applicative ;
-- Streamlit pour la demonstration utilisateur et la visualisation rapide.
+- PySide6 pour une vraie application desktop de supervision.
 
 Le resultat attendu est un prototype qui prouve une logique systeme : des donnees
 heterogenes entrent, un modele commun sort, des alertes sont calculees, et l'ensemble
-est visible dans une interface claire.
+est visible dans une interface de supervision locale.
