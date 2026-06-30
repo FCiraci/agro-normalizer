@@ -110,7 +110,7 @@ API REST, orchestration applicative, persistance
         | HTTP / JSON
         v
 PySide6
-Application desktop, pupitre operateur, tables, alarmes, journal machine
+Application desktop, import, previsualisation, journal machine
 ```
 
 Le module Python porte la logique data : lecture des fichiers, mapping des colonnes,
@@ -125,8 +125,8 @@ il pourra exposer des routes comme :
 
 Le module desktop PySide6 porte l'experience utilisateur locale. Ce n'est pas une
 interface web : il s'agit d'une vraie fenetre de logiciel, pensee comme une console
-operateur industrielle, avec des panneaux d'etat, des tables, des alarmes, des
-boutons de cycle et un journal machine.
+operateur industrielle simple, avec un panneau d'import, une table de
+previsualisation et un journal machine.
 
 ## Modules du depot
 
@@ -177,8 +177,7 @@ pour preparer l'architecture, mais ils ne contiennent pas encore de classes meti
 ### `desktop/`
 
 Contient l'application PySide6. L'interface actuelle est une maquette executable de
-console operateur : volontairement dense, brute et proche d'un logiciel industriel,
-plutot qu'une page web.
+console operateur : sobre, industrielle et facile a etendre, plutot qu'une page web.
 
 Elle ne lance pas de serveur et ne depend pas d'un navigateur.
 

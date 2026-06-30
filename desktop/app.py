@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -10,11 +11,11 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
-    QRadioButton,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -22,13 +23,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+try:
+    from .themes import appliquer_theme
+except ImportError:
+    from themes import appliquer_theme
 
-class OperatorConsole(QMainWindow):
+
+class AgroNormalizerApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Agro Normalizer - Console operateur")
-        self.resize(1280, 760)
-        self.setMinimumSize(1040, 640)
+        self.setWindowTitle("Agro Normalizer")
+        self.resize(1050, 650)
+        self.setMinimumSize(900, 560)
 
         root = QWidget()
         root.setObjectName("root")
@@ -40,444 +46,191 @@ class OperatorConsole(QMainWindow):
 
         layout.addWidget(self._build_header())
 
-        body = QHBoxLayout()
-        body.setSpacing(8)
-        body.addWidget(self._build_control_panel(), 1)
-        body.addWidget(self._build_supervision_panel(), 3)
-        body.addWidget(self._build_alarm_panel(), 1)
-        layout.addLayout(body, 1)
+        content = QHBoxLayout()
+        content.setSpacing(8)
+        content.addWidget(self._build_import_panel(), 0)
+        content.addWidget(self._build_preview_panel(), 1)
+        layout.addLayout(content, 1)
 
-        layout.addWidget(self._build_log_panel())
+        layout.addWidget(self._build_log_panel(), 0)
 
-        self.statusBar().showMessage("Console prete - aucun flux traite")
+        self.module_combo.currentTextChanged.connect(
+            lambda module: appliquer_theme(self, module)
+        )
+        appliquer_theme(self, self.module_combo.currentText())
+
+        self.statusBar().showMessage("Pret")
 
     def _build_header(self) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("header")
-        layout = QGridLayout(frame)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setHorizontalSpacing(8)
+        header = QFrame()
+        header.setObjectName("header")
 
-        title = QLabel("AGRO-NORMALIZER / CONSOLE OPERATEUR")
-        title.setObjectName("mainTitle")
-        subtitle = QLabel("Moteur de normalisation heterogene - mode simulation")
-        subtitle.setObjectName("smallLabel")
+        title = QLabel("AGRO-NORMALIZER")
+        title.setObjectName("title")
 
-        title_block = QVBoxLayout()
-        title_block.addWidget(title)
-        title_block.addWidget(subtitle)
-        layout.addLayout(title_block, 0, 0, 2, 1)
+        subtitle = QLabel("Normalisation de flux agro-alimentaires - poste local")
+        subtitle.setObjectName("subtitle")
 
-        layout.addWidget(self._status_tile("API LOTS", "ATTENTE", "warn"), 0, 1)
-        layout.addWidget(self._status_tile("MODE", "LOCAL", "ok"), 0, 2)
-        layout.addWidget(self._status_tile("FILE", "004 FLUX", "info"), 0, 3)
-        layout.addWidget(self._status_tile("ALARMES", "003", "alarm"), 0, 4)
+        status = QLabel("API: attente  |  Mode: simulation  |  Alertes: 0")
+        status.setObjectName("headerStatus")
+        status.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        return frame
+        left = QVBoxLayout()
+        left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(1)
+        left.addWidget(title)
+        left.addWidget(subtitle)
 
-    def _status_tile(self, label: str, value: str, state: str) -> QWidget:
-        tile = QFrame()
-        tile.setObjectName("statusTile")
+        layout = QHBoxLayout(header)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.addLayout(left, 1)
+        layout.addWidget(status, 0)
 
-        lamp = QLabel()
-        lamp.setObjectName(f"lamp_{state}")
-        lamp.setFixedSize(14, 14)
+        return header
 
-        label_widget = QLabel(label)
-        label_widget.setObjectName("smallLabel")
+    def _build_import_panel(self) -> QWidget:
+        panel = QGroupBox("Import")
+        panel.setFixedWidth(300)
 
-        value_widget = QLabel(value)
-        value_widget.setObjectName("statusValue")
+        layout = QVBoxLayout(panel)
+        layout.setSpacing(10)
 
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(6)
-        row.addWidget(lamp)
-        row.addWidget(value_widget, 1)
+        form = QGridLayout()
+        form.setHorizontalSpacing(8)
+        form.setVerticalSpacing(8)
 
-        layout = QVBoxLayout(tile)
-        layout.setContentsMargins(8, 5, 8, 5)
-        layout.setSpacing(2)
-        layout.addWidget(label_widget)
-        layout.addLayout(row)
+        self.module_combo = QComboBox()
+        self.module_combo.addItems(["Logiviande - pesees", "Silos - apports"])
 
-        return tile
+        self.adapter_combo = QComboBox()
+        self.adapter_combo.addItems(["Mapping dur", "Mapping LLM"])
 
-    def _build_control_panel(self) -> QWidget:
-        group = QGroupBox("PUPITRE")
-        layout = QVBoxLayout(group)
-        layout.setSpacing(8)
+        self.source_combo = QComboBox()
+        self.source_combo.addItems(["Auto", "Bizerba", "Dini Argeo", "Multivac", "Site silo"])
 
-        module_box = QGroupBox("MODULE")
-        module_layout = QVBoxLayout(module_box)
-        logiviande_radio = QRadioButton("Logiviande - pesees")
-        logiviande_radio.setChecked(True)
-        module_layout.addWidget(logiviande_radio)
-        module_layout.addWidget(QRadioButton("Silos - apports cerealiers"))
-        layout.addWidget(module_box)
+        self.file_input = QLineEdit()
+        self.file_input.setReadOnly(True)
+        self.file_input.setPlaceholderText("Aucun fichier selectionne")
 
-        adapter_box = QGroupBox("ADAPTER")
-        adapter_layout = QVBoxLayout(adapter_box)
-        hard_mapping_radio = QRadioButton("Mapping dur")
-        hard_mapping_radio.setChecked(True)
-        adapter_layout.addWidget(hard_mapping_radio)
-        adapter_layout.addWidget(QRadioButton("Mapping LLM"))
-        layout.addWidget(adapter_box)
+        browse_button = QPushButton("Choisir fichier")
+        browse_button.clicked.connect(self._select_file)
 
-        source_box = QGroupBox("SOURCE")
-        source_layout = QGridLayout(source_box)
-        profile = QComboBox()
-        profile.addItems(["Auto", "Bizerba", "Dini Argeo", "Multivac", "Site silo"])
-        self.file_field = QLineEdit("Aucun fichier charge")
-        self.file_field.setReadOnly(True)
-        browse = QPushButton("PARCOURIR")
-        browse.clicked.connect(self._select_file)
-        source_layout.addWidget(QLabel("Profil"), 0, 0)
-        source_layout.addWidget(profile, 0, 1)
-        source_layout.addWidget(QLabel("Fichier"), 1, 0)
-        source_layout.addWidget(self.file_field, 1, 1)
-        source_layout.addWidget(browse, 2, 0, 1, 2)
-        layout.addWidget(source_box)
+        form.addWidget(QLabel("Module"), 0, 0)
+        form.addWidget(self.module_combo, 0, 1)
+        form.addWidget(QLabel("Adapter"), 1, 0)
+        form.addWidget(self.adapter_combo, 1, 1)
+        form.addWidget(QLabel("Source"), 2, 0)
+        form.addWidget(self.source_combo, 2, 1)
+        form.addWidget(QLabel("Fichier"), 3, 0)
+        form.addWidget(self.file_input, 3, 1)
+        form.addWidget(browse_button, 4, 0, 1, 2)
 
-        action_box = QGroupBox("CYCLE")
-        action_layout = QGridLayout(action_box)
-        start = QPushButton("LANCER CYCLE")
-        stop = QPushButton("ARRET TRAITEMENT")
-        validate = QPushButton("VALIDER LOT")
-        start.clicked.connect(lambda: self._append_log("Cycle manuel demande par operateur"))
-        stop.clicked.connect(lambda: self._append_log("Arret traitement demande"))
-        validate.clicked.connect(lambda: self._append_log("Validation lot simulee"))
-        action_layout.addWidget(start, 0, 0)
-        action_layout.addWidget(stop, 1, 0)
-        action_layout.addWidget(validate, 2, 0)
-        layout.addWidget(action_box)
+        layout.addLayout(form)
+
+        actions = QHBoxLayout()
+        preview_button = QPushButton("Previsualiser")
+        normalize_button = QPushButton("Normaliser")
+        preview_button.clicked.connect(lambda: self._append_log("Previsualisation demandee"))
+        normalize_button.clicked.connect(lambda: self._append_log("Normalisation simulee"))
+        actions.addWidget(preview_button)
+        actions.addWidget(normalize_button)
+        layout.addLayout(actions)
+
+        self.summary = QLabel(
+            "Etat\n"
+            "Flux: non charge\n"
+            "Lignes: 0\n"
+            "Alertes: 0"
+        )
+        self.summary.setObjectName("summary")
+        self.summary.setAlignment(Qt.AlignTop)
+        layout.addWidget(self.summary)
 
         layout.addStretch(1)
-        return group
+        return panel
 
-    def _build_supervision_panel(self) -> QWidget:
-        group = QGroupBox("SUPERVISION FLUX")
-        layout = QVBoxLayout(group)
-        layout.setSpacing(8)
+    def _build_preview_panel(self) -> QWidget:
+        panel = QGroupBox("Previsualisation")
+        layout = QVBoxLayout(panel)
 
-        metrics = QGridLayout()
-        metrics.setSpacing(8)
-        metrics.addWidget(self._metric("FICHIERS RECUS", "004"), 0, 0)
-        metrics.addWidget(self._metric("LIGNES NORMALISEES", "501"), 0, 1)
-        metrics.addWidget(self._metric("CONFIANCE LLM", "91%"), 0, 2)
-        metrics.addWidget(self._metric("CYCLE", "00:14"), 0, 3)
-        layout.addLayout(metrics)
-
-        self.flow_table = QTableWidget(4, 6)
-        self.flow_table.setHorizontalHeaderLabels(
-            ["Source", "Module", "Adapter", "Lignes", "Statut", "Alerte"]
+        self.table = QTableWidget(4, 6)
+        self.table.setHorizontalHeaderLabels(
+            ["Source", "Module", "Champ", "Valeur brute", "Valeur normalisee", "Statut"]
         )
-        flow_rows = [
-            ["BIZERBA_P01_2026-06-30.csv", "Logiviande", "Mapping dur", "128", "Pret", "Rendement bas"],
-            ["DINIA_P02_EXPORT.txt", "Logiviande", "LLM", "64", "A controler", "Colonnes inconnues"],
-            ["SILO_NORD_APPORTS.xlsx", "Silos", "Mapping dur", "217", "Pret", "Humidite haute"],
-            ["SITE_OUEST_20260630.csv", "Silos", "LLM", "92", "Simulation", "Aucune"],
+        self.table.verticalHeader().setVisible(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setAlternatingRowColors(True)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setFont(QFont("Consolas", 9))
+
+        rows = [
+            ["BIZERBA_P01.csv", "Logiviande", "lot", "L-2407", "L-2407", "OK"],
+            ["BIZERBA_P01.csv", "Logiviande", "poids_carcasse", "312,4 kg", "312.4", "OK"],
+            ["BIZERBA_P01.csv", "Logiviande", "poids_decoupe", "198,6 kg", "198.6", "OK"],
+            ["SILO_NORD.csv", "Silos", "humidite", "17,2%", "17.2", "A controler"],
         ]
-        self._fill_table(self.flow_table, flow_rows)
-        layout.addWidget(self.flow_table, 2)
+        self._fill_table(rows)
 
-        self.mapping_table = QTableWidget(4, 4)
-        self.mapping_table.setHorizontalHeaderLabels(
-            ["Champ normalise", "Mapping dur", "Mapping LLM", "Confiance"]
-        )
-        mapping_rows = [
-            ["lot", "Lot", "numero_lot", "96%"],
-            ["poids_carcasse", "Poids carc.", "kg_carcasse", "91%"],
-            ["poids_decoupe", "Poids decoupe", "kg_decoupe", "89%"],
-            ["classement", "EUROP", "classe_europ", "94%"],
-        ]
-        self._fill_table(self.mapping_table, mapping_rows)
-        layout.addWidget(self.mapping_table, 1)
-
-        return group
-
-    def _metric(self, label: str, value: str) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("metric")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(8, 6, 8, 6)
-        caption = QLabel(label)
-        caption.setObjectName("smallLabel")
-        number = QLabel(value)
-        number.setObjectName("metricValue")
-        layout.addWidget(caption)
-        layout.addWidget(number)
-        return frame
-
-    def _build_alarm_panel(self) -> QWidget:
-        group = QGroupBox("ALARMES")
-        layout = QVBoxLayout(group)
-        layout.setSpacing(8)
-
-        alarms = [
-            ("HAUT", "Logiviande / LOT-2407", "Rendement 61.8%"),
-            ("MOYEN", "Silos / AP-8831", "Humidite 17.2%"),
-            ("MOYEN", "Logiviande / SRC-DINIA", "Format source atypique"),
-        ]
-        for level, reference, message in alarms:
-            layout.addWidget(self._alarm_row(level, reference, message))
-
-        channels = QGroupBox("CANAUX")
-        channels_layout = QGridLayout(channels)
-        channels_layout.addWidget(self._status_tile("PYTHON ETL", "OK", "ok"), 0, 0)
-        channels_layout.addWidget(self._status_tile("SPRING API", "WAIT", "warn"), 0, 1)
-        channels_layout.addWidget(self._status_tile("LLM", "SIM", "info"), 1, 0)
-        channels_layout.addWidget(self._status_tile("H2", "OK", "ok"), 1, 1)
-        layout.addWidget(channels)
-
-        layout.addStretch(1)
-        return group
-
-    def _alarm_row(self, level: str, reference: str, message: str) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("alarmRow")
-        layout = QGridLayout(frame)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        level_label = QLabel(level)
-        level_label.setObjectName("alarmHigh" if level == "HAUT" else "alarmMedium")
-        level_label.setAlignment(Qt.AlignCenter)
-        level_label.setFixedWidth(68)
-
-        text = QLabel(f"{reference}\n{message}")
-        text.setObjectName("alarmText")
-
-        time = QLabel("11:24")
-        time.setObjectName("alarmTime")
-        time.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        layout.addWidget(level_label, 0, 0)
-        layout.addWidget(text, 0, 1)
-        layout.addWidget(time, 0, 2)
-
-        return frame
+        layout.addWidget(self.table)
+        return panel
 
     def _build_log_panel(self) -> QWidget:
-        group = QGroupBox("JOURNAL MACHINE")
-        layout = QVBoxLayout(group)
+        panel = QGroupBox("Journal")
+        panel.setFixedHeight(150)
+
+        layout = QVBoxLayout(panel)
         self.log = QTextEdit()
         self.log.setReadOnly(True)
-        self.log.setObjectName("machineLog")
+        self.log.setObjectName("log")
         self.log.setPlainText(
-            "\n".join(
-                [
-                    "11:24:12  CYCLE INIT      profil=Auto module=Logiviande adapter=Mapping dur",
-                    "11:24:13  SOURCE SCAN     4 flux detectes dans data/samples",
-                    "11:24:14  NORMALIZER      mapping candidat charge",
-                    "11:24:15  CONTROL         3 alertes en attente de validation",
-                    "11:24:16  API             canal Spring Boot non connecte dans cette maquette",
-                ]
-            )
+            "08:00:00  INIT        Application chargee\n"
+            "08:00:01  SYSTEM      En attente d'un fichier source"
         )
         layout.addWidget(self.log)
-        return group
+
+        return panel
 
     def _select_file(self) -> None:
         file_name, _ = QFileDialog.getOpenFileName(
             self,
-            "Selectionner un flux source",
+            "Selectionner un fichier source",
             "",
             "Flux (*.csv *.txt *.xlsx);;Tous les fichiers (*.*)",
         )
-        if file_name:
-            self.file_field.setText(file_name)
-            self._append_log(f"Fichier selectionne: {file_name}")
+
+        if not file_name:
+            return
+
+        self.file_input.setText(file_name)
+        self.summary.setText(
+            "Etat\n"
+            "Flux: charge\n"
+            "Lignes: simulation\n"
+            "Alertes: simulation"
+        )
+        self._append_log(f"Fichier selectionne: {file_name}")
 
     def _append_log(self, message: str) -> None:
-        self.log.append(f"11:25:00  OPERATEUR      {message}")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log.append(f"{timestamp}  INFO        {message}")
         self.statusBar().showMessage(message)
 
-    def _fill_table(self, table: QTableWidget, rows: list[list[str]]) -> None:
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setStretchLastSection(True)
-        table.setAlternatingRowColors(True)
-        table.setSelectionBehavior(QTableWidget.SelectRows)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setFont(QFont("Consolas", 9))
-
+    def _fill_table(self, rows: list[list[str]]) -> None:
         for row_index, row in enumerate(rows):
+            is_alert = row[-1] != "OK"
             for column_index, value in enumerate(row):
                 item = QTableWidgetItem(value)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                table.setItem(row_index, column_index, item)
-
-
-STYLE = """
-QWidget#root {
-    background: #d4d5cf;
-    color: #191c18;
-    font-family: "Segoe UI";
-    font-size: 12px;
-}
-
-QFrame#header,
-QGroupBox {
-    background: #c4c6be;
-    border: 2px solid #555a51;
-}
-
-QGroupBox {
-    margin-top: 18px;
-    padding: 9px;
-    font-weight: 800;
-}
-
-QGroupBox::title {
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    left: 8px;
-    padding: 3px 8px;
-    background: #30342f;
-    color: #eef0e8;
-}
-
-QLabel#mainTitle {
-    font-size: 17px;
-    font-weight: 900;
-    color: #161915;
-}
-
-QLabel#smallLabel {
-    color: #555b52;
-    font-size: 10px;
-    font-weight: 900;
-}
-
-QLabel#statusValue,
-QLabel#metricValue {
-    color: #10130f;
-    font-family: Consolas;
-    font-size: 17px;
-    font-weight: 900;
-}
-
-QFrame#statusTile,
-QFrame#metric {
-    background: #dedfd9;
-    border: 1px solid #555a51;
-}
-
-QLabel#lamp_ok,
-QLabel#lamp_warn,
-QLabel#lamp_alarm,
-QLabel#lamp_info {
-    border: 1px solid #10130f;
-}
-
-QLabel#lamp_ok {
-    background: #287a3e;
-}
-
-QLabel#lamp_warn {
-    background: #b48618;
-}
-
-QLabel#lamp_alarm {
-    background: #b13d2a;
-}
-
-QLabel#lamp_info {
-    background: #28536b;
-}
-
-QPushButton {
-    background: #e0e1dc;
-    border: 2px solid #565b52;
-    padding: 8px;
-    font-weight: 900;
-}
-
-QPushButton:hover {
-    background: #f2f3ed;
-    border-color: #20241f;
-}
-
-QPushButton:pressed {
-    background: #b7bab1;
-}
-
-QLineEdit,
-QComboBox {
-    background: #eceee7;
-    border: 1px solid #555a51;
-    padding: 5px;
-    font-family: Consolas;
-}
-
-QTableWidget {
-    background: #e3e4de;
-    alternate-background-color: #d2d5cd;
-    border: 2px solid #555a51;
-    gridline-color: #8b9087;
-    font-family: Consolas;
-}
-
-QHeaderView::section {
-    background: #30342f;
-    color: #eef0e8;
-    border: 1px solid #555a51;
-    padding: 5px;
-    font-weight: 900;
-}
-
-QFrame#alarmRow {
-    background: #dedfd9;
-    border: 1px solid #555a51;
-}
-
-QLabel#alarmHigh {
-    background: #b13d2a;
-    color: white;
-    font-family: Consolas;
-    font-weight: 900;
-    padding: 8px;
-}
-
-QLabel#alarmMedium {
-    background: #b48618;
-    color: #15150f;
-    font-family: Consolas;
-    font-weight: 900;
-    padding: 8px;
-}
-
-QLabel#alarmText {
-    padding: 6px;
-    font-weight: 800;
-}
-
-QLabel#alarmTime {
-    padding: 6px;
-    font-family: Consolas;
-    font-weight: 900;
-}
-
-QTextEdit#machineLog {
-    background: #171a17;
-    color: #d9e1d3;
-    border: 2px solid #555a51;
-    font-family: Consolas;
-    font-size: 12px;
-}
-
-QStatusBar {
-    background: #30342f;
-    color: #eef0e8;
-    font-family: Consolas;
-}
-"""
+                if is_alert:
+                    item.setData(Qt.UserRole, "alerte")
+                self.table.setItem(row_index, column_index, item)
 
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setStyleSheet(STYLE)
-    window = OperatorConsole()
+    app.setStyle("Fusion")
+    window = AgroNormalizerApp()
     window.show()
     return app.exec()
 
