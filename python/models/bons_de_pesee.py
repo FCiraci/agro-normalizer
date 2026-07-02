@@ -54,3 +54,16 @@ class BonDePesee:
 
         rendement = self.calculer_rendement()
         return rendement - seuils["standard"]
+
+    def to_dict(self) -> dict:
+        """
+        Retourne un dictionnaire représentant le bon de pesée.
+        """
+        return {
+            "numero_lot": self.numero_lot,
+            "date_pesee": self.date_pesee.isoformat(),
+            "poids_carcasse_kg": self.poids_carcasse_kg,
+            "poids_decoupe_kg": self.poids_decoupe_kg,
+            "categorie_classement": self.categorie_classement,
+            "source_balance": self.source_balance,
+        }
