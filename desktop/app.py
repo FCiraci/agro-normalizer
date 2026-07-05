@@ -2,65 +2,77 @@ import sys
 from datetime import datetime
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QFrame,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QMainWindow,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
 )
 
 try:
-    from .themes import appliquer_theme
+    from .themes import BASE_UI, appliquer_theme
 except ImportError:
-    from themes import appliquer_theme
+    from themes import BASE_UI, appliquer_theme
 
 
+# Bloc de configuration des colonnes selon le module actif.
+TABLE_COLUMNS = {
+    "Logiviande": ["Lot", "Date", "Poids carcasse", "Poids découpe", "Classement", "Rendement%", "Alerte"],
+    "Silos": ["Apport", "Date", "Site", "Céréale", "Poids net", "Humidité%", "Alerte"],
+}
+
+
+# Bloc principal de la fenêtre unique.
 class AgroNormalizerApp(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Agro Normalizer")
-        self.resize(1050, 650)
-        self.setMinimumSize(900, 560)
+        self.setWindowTitle("AGRO-NORMALIZER")
+        self.resize(1220, 780)
+        self.setMinimumSize(1024, 680)
 
+        self.current_module = "Logiviande"
+
+        # Bloc racine et disposition générale.
         root = QWidget()
         root.setObjectName("root")
         self.setCentralWidget(root)
 
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
+        # Bloc d'en-tête avec le titre et le sélecteur de module.
         layout.addWidget(self._build_header())
 
-        content = QHBoxLayout()
-        content.setSpacing(8)
-        content.addWidget(self._build_import_panel(), 0)
-        content.addWidget(self._build_preview_panel(), 1)
-        layout.addLayout(content, 1)
+        # Bloc central avec import et résultats.
+        central = QHBoxLayout()
+        central.setSpacing(12)
+        central.addWidget(self._build_import_section(), 0)
+        central.addWidget(self._build_results_section(), 1)
+        layout.addLayout(central, 1)
 
-        layout.addWidget(self._build_log_panel(), 0)
+        # Bloc journal en bas de la fenêtre.
+        layout.addWidget(self._build_log_section(), 0)
 
-        self.module_combo.currentTextChanged.connect(
-            lambda module: appliquer_theme(self, module)
-        )
-        appliquer_theme(self, self.module_combo.currentText())
+        # Bloc de connexion des signaux et initialisation visuelle.
+        self._connect_signals()
+        appliquer_theme(self, self.current_module)
+        self._update_table_columns(self.current_module)
+        self._append_log(self.current_module, "Interface prête")
 
-        self.statusBar().showMessage("Pret")
-
+    # Bloc d'en-tête.
     def _build_header(self) -> QWidget:
         header = QFrame()
         header.setObjectName("header")
@@ -68,165 +80,165 @@ class AgroNormalizerApp(QMainWindow):
         title = QLabel("AGRO-NORMALIZER")
         title.setObjectName("title")
 
-        subtitle = QLabel("Normalisation de flux agro-alimentaires - poste local")
+        subtitle = QLabel("Supervision locale des flux Logiviande et Silos")
         subtitle.setObjectName("subtitle")
 
-        status = QLabel("API: attente  |  Mode: simulation  |  Alertes: 0")
-        status.setObjectName("headerStatus")
-        status.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.module_combo = QComboBox()
+        self.module_combo.addItems(["Logiviande", "Silos"])
 
         left = QVBoxLayout()
         left.setContentsMargins(0, 0, 0, 0)
-        left.setSpacing(1)
+        left.setSpacing(2)
         left.addWidget(title)
         left.addWidget(subtitle)
 
+        right = QVBoxLayout()
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(4)
+        right.addWidget(QLabel("Module actif"))
+        right.addWidget(self.module_combo)
+
         layout = QHBoxLayout(header)
-        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(16)
         layout.addLayout(left, 1)
-        layout.addWidget(status, 0)
+        layout.addLayout(right, 0)
 
         return header
 
-    def _build_import_panel(self) -> QWidget:
-        panel = QGroupBox("Import")
-        panel.setFixedWidth(300)
+    # Bloc d'import.
+    def _build_import_section(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("importPanel")
+        panel.setMinimumWidth(330)
 
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
-        form = QGridLayout()
-        form.setHorizontalSpacing(8)
-        form.setVerticalSpacing(8)
+        title = QLabel("Import")
+        title.setObjectName("sectionTitle")
+        layout.addWidget(title)
 
-        self.module_combo = QComboBox()
-        self.module_combo.addItems(["Logiviande - pesees", "Silos - apports"])
+        self.choose_file_button = QPushButton("Choisir un fichier")
+        layout.addWidget(self.choose_file_button)
 
-        self.adapter_combo = QComboBox()
-        self.adapter_combo.addItems(["Mapping dur", "Mapping LLM"])
+        self.file_path_label = QLabel("Aucun fichier sélectionné")
+        self.file_path_label.setWordWrap(True)
+        self.file_path_label.setObjectName("filePathLabel")
+        layout.addWidget(self.file_path_label)
 
-        self.source_combo = QComboBox()
-        self.source_combo.addItems(["Auto", "Bizerba", "Dini Argeo", "Multivac", "Site silo"])
+        self.llm_checkbox = QCheckBox("Utiliser l'Adapter LLM")
+        layout.addWidget(self.llm_checkbox)
 
-        self.file_input = QLineEdit()
-        self.file_input.setReadOnly(True)
-        self.file_input.setPlaceholderText("Aucun fichier selectionne")
-
-        browse_button = QPushButton("Choisir fichier")
-        browse_button.clicked.connect(self._select_file)
-
-        form.addWidget(QLabel("Module"), 0, 0)
-        form.addWidget(self.module_combo, 0, 1)
-        form.addWidget(QLabel("Adapter"), 1, 0)
-        form.addWidget(self.adapter_combo, 1, 1)
-        form.addWidget(QLabel("Source"), 2, 0)
-        form.addWidget(self.source_combo, 2, 1)
-        form.addWidget(QLabel("Fichier"), 3, 0)
-        form.addWidget(self.file_input, 3, 1)
-        form.addWidget(browse_button, 4, 0, 1, 2)
-
-        layout.addLayout(form)
-
-        actions = QHBoxLayout()
-        preview_button = QPushButton("Previsualiser")
-        normalize_button = QPushButton("Normaliser")
-        preview_button.clicked.connect(lambda: self._append_log("Previsualisation demandee"))
-        normalize_button.clicked.connect(lambda: self._append_log("Normalisation simulee"))
-        actions.addWidget(preview_button)
-        actions.addWidget(normalize_button)
-        layout.addLayout(actions)
-
-        self.summary = QLabel(
-            "Etat\n"
-            "Flux: non charge\n"
-            "Lignes: 0\n"
-            "Alertes: 0"
-        )
-        self.summary.setObjectName("summary")
-        self.summary.setAlignment(Qt.AlignTop)
-        layout.addWidget(self.summary)
+        self.process_button = QPushButton("Traiter le fichier")
+        layout.addWidget(self.process_button)
 
         layout.addStretch(1)
         return panel
 
-    def _build_preview_panel(self) -> QWidget:
-        panel = QGroupBox("Previsualisation")
+    # Bloc de résultats.
+    def _build_results_section(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("resultsPanel")
+
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
 
-        self.table = QTableWidget(4, 6)
-        self.table.setHorizontalHeaderLabels(
-            ["Source", "Module", "Champ", "Valeur brute", "Valeur normalisee", "Statut"]
-        )
-        self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setAlternatingRowColors(True)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setFont(QFont("Consolas", 9))
+        title = QLabel("Résultats")
+        title.setObjectName("sectionTitle")
+        layout.addWidget(title)
 
-        rows = [
-            ["BIZERBA_P01.csv", "Logiviande", "lot", "L-2407", "L-2407", "OK"],
-            ["BIZERBA_P01.csv", "Logiviande", "poids_carcasse", "312,4 kg", "312.4", "OK"],
-            ["BIZERBA_P01.csv", "Logiviande", "poids_decoupe", "198,6 kg", "198.6", "OK"],
-            ["SILO_NORD.csv", "Silos", "humidite", "17,2%", "17.2", "A controler"],
-        ]
-        self._fill_table(rows)
+        self.results_table = QTableWidget(0, len(TABLE_COLUMNS[self.current_module]))
+        self.results_table.setHorizontalHeaderLabels(TABLE_COLUMNS[self.current_module])
+        self.results_table.verticalHeader().setVisible(False)
+        self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.results_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.results_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.results_table.setAlternatingRowColors(True)
+        self.results_table.setFont(QFont("Consolas", 9))
+        self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.results_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.results_table, 1)
 
-        layout.addWidget(self.table)
         return panel
 
-    def _build_log_panel(self) -> QWidget:
-        panel = QGroupBox("Journal")
-        panel.setFixedHeight(150)
+    # Bloc journal.
+    def _build_log_section(self) -> QWidget:
+        panel = QFrame()
+        panel.setObjectName("logPanel")
+        panel.setMinimumHeight(170)
 
         layout = QVBoxLayout(panel)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        title = QLabel("Journal")
+        title.setObjectName("sectionTitle")
+        layout.addWidget(title)
+
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setObjectName("log")
-        self.log.setPlainText(
-            "08:00:00  INIT        Application chargee\n"
-            "08:00:01  SYSTEM      En attente d'un fichier source"
-        )
-        layout.addWidget(self.log)
+        layout.addWidget(self.log, 1)
 
         return panel
 
-    def _select_file(self) -> None:
-        file_name, _ = QFileDialog.getOpenFileName(
+    # Bloc de connexion des signaux.
+    def _connect_signals(self) -> None:
+        self.module_combo.currentTextChanged.connect(self._on_module_changed)
+        self.choose_file_button.clicked.connect(self._choose_file)
+        self.process_button.clicked.connect(self._process_file)
+
+    # Bloc de changement de module.
+    def _on_module_changed(self, module: str) -> None:
+        self.current_module = module
+        appliquer_theme(self, module)
+        self._update_table_columns(module)
+        self._append_log(module, f"Module actif changé vers {module}")
+
+    # Bloc de sélection de fichier.
+    def _choose_file(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Selectionner un fichier source",
+            "Choisir un fichier",
             "",
-            "Flux (*.csv *.txt *.xlsx);;Tous les fichiers (*.*)",
+            "Fichiers CSV (*.csv);;Tous les fichiers (*.*)",
         )
 
-        if not file_name:
+        if not file_path:
+            self._append_log(self.current_module, "Sélection de fichier annulée")
             return
 
-        self.file_input.setText(file_name)
-        self.summary.setText(
-            "Etat\n"
-            "Flux: charge\n"
-            "Lignes: simulation\n"
-            "Alertes: simulation"
-        )
-        self._append_log(f"Fichier selectionne: {file_name}")
+        self.file_path_label.setText(file_path)
+        self._append_log(self.current_module, f"Fichier sélectionné: {file_path}")
 
-    def _append_log(self, message: str) -> None:
+    # Bloc de traitement simulé.
+    def _process_file(self) -> None:
+        if self.file_path_label.text() == "Aucun fichier sélectionné":
+            self._append_log(self.current_module, "Aucun fichier à traiter")
+            return
+
+        mode_llm = "activé" if self.llm_checkbox.isChecked() else "désactivé"
+        self._append_log(self.current_module, f"Traitement demandé avec Adapter LLM {mode_llm}")
+
+    # Bloc d'adaptation des colonnes.
+    def _update_table_columns(self, module: str) -> None:
+        columns = TABLE_COLUMNS[module]
+        self.results_table.clear()
+        self.results_table.setRowCount(0)
+        self.results_table.setColumnCount(len(columns))
+        self.results_table.setHorizontalHeaderLabels(columns)
+        self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    # Bloc d'écriture du journal.
+    def _append_log(self, module: str, message: str) -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log.append(f"{timestamp}  INFO        {message}")
-        self.statusBar().showMessage(message)
-
-    def _fill_table(self, rows: list[list[str]]) -> None:
-        for row_index, row in enumerate(rows):
-            is_alert = row[-1] != "OK"
-            for column_index, value in enumerate(row):
-                item = QTableWidgetItem(value)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                if is_alert:
-                    item.setData(Qt.UserRole, "alerte")
-                self.table.setItem(row_index, column_index, item)
+        self.log.append(f"{timestamp} — [{module}] — {message}")
 
 
+# Bloc d'entrée de l'application.
 def main() -> int:
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
