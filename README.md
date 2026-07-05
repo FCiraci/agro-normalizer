@@ -218,11 +218,14 @@ l'application desktop (sinon les POST echouent avec une erreur explicite
 
 ### 1. API Spring Boot (obligatoire en premier)
 
-Prerequis : JDK 21 et Maven. Ils sont installes dans `C:\Users\Furkan\tools\`
-et references par les variables utilisateur `JAVA_HOME` et `Path` : dans tout
-**nouveau** terminal, `mvn` et `java` (21) sont directement disponibles.
+Prerequis : JDK 21 et Maven. Si `mvn` n'est pas reconnu dans ton terminal,
+ajoute le dossier `bin` de ton installation Maven au `Path`, puis verifie que
+`JAVA_HOME` pointe vers un JDK 21.
 
 ```powershell
+setx JAVA_HOME "C:\chemin\vers\jdk-21"
+$env:JAVA_HOME = "C:\chemin\vers\jdk-21"
+$env:Path = "$env:JAVA_HOME\bin;C:\chemin\vers\maven\bin;$env:Path"
 cd java
 mvn spring-boot:run
 ```
