@@ -222,6 +222,16 @@ Prerequis : JDK 21 et Maven. Si `mvn` n'est pas reconnu dans ton terminal,
 ajoute le dossier `bin` de ton installation Maven au `Path`, puis verifie que
 `JAVA_HOME` pointe vers un JDK 21.
 
+Verification rapide :
+
+```powershell
+java -version
+mvn -v
+```
+
+Si `mvn -v` affiche encore Java 17, ton terminal utilise le mauvais JDK et tu
+dois le basculer vers Java 21 avant de lancer l'application.
+
 ```powershell
 setx JAVA_HOME "C:\chemin\vers\jdk-21"
 $env:JAVA_HOME = "C:\chemin\vers\jdk-21"
