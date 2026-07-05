@@ -1,0 +1,9 @@
+apport_id,load_date,collection_site,grain,net_weight_kg,moisture_pct,system_name
+APP-B-201,2026-02-07,Silo Est,mais,980.0,13.9,WMS
+APP-B-202,2026-02-14,Silo Est,ble_tendre,1250.5,14.6,WMS
+APP-B-203,2026-02-21,Silo Est,mais,1430.0,15.8,WMS
+APP-B-204,2026-02-28,Silo Est,orge,1100.0,14.2,WMS
+APP-B-205,2026-03-07,Silo Est,ble_tendre,-870.0,13.5,WMS
+APP-B-206,2026-03-14,Silo Est,mais,1520.0,12.9,WMS
+APP-B-207,2026-03-21,Silo Est,"orge,1210.0,13.4,WMS
+APP-B-208,2026-03-28,Silo Est,orge,990.0,13.1,WMS

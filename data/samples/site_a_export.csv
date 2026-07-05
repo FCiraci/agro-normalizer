@@ -1,0 +1,11 @@
+Numero_Apport;Date_Apport;Site_Collecte;Cereale;Poids_Net;Taux_Humidite;Source_Systeme
+APP-A-101;06/01/2026;Silo Nord;ble_tendre;12500,0;14,2;ERP
+APP-A-102;13/01/2026;Silo Nord;ble_tendre;9800,5;13,8;ERP
+APP-A-103;20/01/2026;Silo Nord;mais;15200,0;13,5;ERP
+APP-A-104;27/01/2026;Silo Nord;ble_tendre;11000,0;16,2;ERP
+APP-A-105;03/02/2026;Silo Nord;orge;8700,0;14,0;ERP
+APP-A-106;10/02/2026;Silo Nord;mais;14300,0
+APP-A-107;17/02/2026;Silo Nord;ble_tendre;;13,9;ERP
+APP-A-108;24/02/2026;Silo Nord;orge;10250,0;15,1;ERP
+APP-A-109;03/03/2026;Silo Nord;ble_tendre;13600,0;14,9;ERP
+APP-A-110;10/03/2026;Silo Nord;mais;12100,0;12,7;ERP

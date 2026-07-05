@@ -24,6 +24,7 @@ class BonDePesee:
     poids_decoupe_kg: float
     categorie_classement: str
     source_balance: str
+    espece: str = "bovin"
 
     def calculer_rendement(self) -> float:
         """
@@ -33,24 +34,28 @@ class BonDePesee:
             raise ValueError("Le poids de carcasse doit être supérieur à 0.")
         return (self.poids_decoupe_kg / self.poids_carcasse_kg) * 100
 
-    def est_en_alerte(self, espece: str = "bovin") -> bool:
+    def est_en_alerte(self, espece: str | None = None) -> bool:
         """
         Retourne True si le rendement est en dehors de la plage acceptable.
+        Sans argument, utilise l'espèce portée par le lot.
         """
-        seuils = SEUILS_RENDEMENT.get(espece)
+        espece_effective = espece or self.espece
+        seuils = SEUILS_RENDEMENT.get(espece_effective)
         if seuils is None:
-            raise ValueError(f"Espèce inconnue: {espece}")
+            raise ValueError(f"Espèce inconnue: {espece_effective}")
 
         rendement = self.calculer_rendement()
         return rendement < seuils["alerte_basse"] or rendement > seuils["alerte_haute"]
 
-    def ecart_vs_standard(self, espece: str) -> float:
+    def ecart_vs_standard(self, espece: str | None = None) -> float:
         """
         Retourne l'écart entre le rendement et le standard de l'espèce.
+        Sans argument, utilise l'espèce portée par le lot.
         """
-        seuils = SEUILS_RENDEMENT.get(espece)
+        espece_effective = espece or self.espece
+        seuils = SEUILS_RENDEMENT.get(espece_effective)
         if seuils is None:
-            raise ValueError(f"Espèce inconnue: {espece}")
+            raise ValueError(f"Espèce inconnue: {espece_effective}")
 
         rendement = self.calculer_rendement()
         return rendement - seuils["standard"]
@@ -66,4 +71,5 @@ class BonDePesee:
             "poids_decoupe_kg": self.poids_decoupe_kg,
             "categorie_classement": self.categorie_classement,
             "source_balance": self.source_balance,
+            "espece": self.espece,
         }

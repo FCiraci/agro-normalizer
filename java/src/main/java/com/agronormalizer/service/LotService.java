@@ -20,19 +20,39 @@ public class LotService {
         this.lotRepository = lotRepository;
     }
 
+    private static final java.util.Set<String> ESPECES_CONNUES = java.util.Set.of("bovin", "porc");
+
     public Lot creerLot(LotDto dto) {
         verifierChampsObligatoires(dto);
         verifierPoids(dto);
+        verifierEspece(dto);
 
         Lot lot = lotMapper.toEntity(dto);
         lotRepository.save(lot);
         return lot;
     }
 
+    private void verifierEspece(LotDto dto) {
+        String espece = dto.getEspece();
+        if (espece == null || espece.isBlank()) {
+            return; // facultatif : l'entité retombe sur l'espèce par défaut.
+        }
+        if (!ESPECES_CONNUES.contains(espece.trim().toLowerCase())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Espèce inconnue: " + espece);
+        }
+    }
+
     public LotDto trouverLot(String id) {
         Lot lot = lotRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lot inconnu: " + id));
         return lotMapper.toDto(lot);
+    }
+
+    public List<LotDto> listerLots() {
+        return lotRepository.findAll().stream()
+                .map(lotMapper::toDto)
+                .toList();
     }
 
     public List<LotDto> listerAlertes() {

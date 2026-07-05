@@ -4,16 +4,16 @@ import com.agronormalizer.model.Lot;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
 public class LotRepositoryEnMemoire implements LotRepository {
 
-    private final Map<String, Lot> lots = new HashMap<>();
+    private final Map<String, Lot> lots = new ConcurrentHashMap<>();
 
     @Override
     public void save(Lot lot) {
@@ -33,7 +33,7 @@ public class LotRepositoryEnMemoire implements LotRepository {
     @Override
     public List<Lot> findAlertes() {
         return lots.values().stream()
-                .filter(lot -> lot.estEnAlerte("bovin"))
+                .filter(Lot::estEnAlerte)
                 .collect(Collectors.toList());
     }
 }

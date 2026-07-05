@@ -4,21 +4,25 @@ import java.time.LocalDate;
 
 public class Lot {
 
+    public static final String ESPECE_PAR_DEFAUT = "bovin";
+
     private String numeroLot;
     private LocalDate datePesee;
     private double poidsCarcasseKg;
     private double poidsDecoupeKg;
     private String categorieClassement;
     private String sourceBalance;
+    private String espece;
 
     public Lot(String numeroLot, LocalDate datePesee, double poidsCarcasseKg, double poidsDecoupeKg,
-            String categorieClassement, String sourceBalance) {
+            String categorieClassement, String sourceBalance, String espece) {
         this.numeroLot = numeroLot;
         this.datePesee = datePesee;
         this.poidsCarcasseKg = poidsCarcasseKg;
         this.poidsDecoupeKg = poidsDecoupeKg;
         this.categorieClassement = categorieClassement;
         this.sourceBalance = sourceBalance;
+        this.espece = espece;
     }
 
     public String getNumeroLot() {
@@ -69,6 +73,14 @@ public class Lot {
         this.sourceBalance = sourceBalance;
     }
 
+    public String getEspece() {
+        return espece;
+    }
+
+    public void setEspece(String espece) {
+        this.espece = espece;
+    }
+
     public String getId() {
         return numeroLot;
     }
@@ -78,6 +90,10 @@ public class Lot {
             throw new IllegalStateException("Le poids de carcasse doit être supérieur à 0.");
         }
         return (poidsDecoupeKg / poidsCarcasseKg) * 100;
+    }
+
+    public boolean estEnAlerte() {
+        return estEnAlerte(espece == null || espece.isBlank() ? ESPECE_PAR_DEFAUT : espece);
     }
 
     public boolean estEnAlerte(String espece) {

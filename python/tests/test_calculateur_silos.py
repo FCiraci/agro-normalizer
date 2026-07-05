@@ -48,6 +48,33 @@ def test_moyenne_ponderee_humidite_rejette_poids_nuls() -> None:
         CalculateurSilos.moyenne_ponderee_humidite(apports)
 
 
+def test_moyenne_ponderee_tire_vers_l_apport_le_plus_lourd() -> None:
+    apports = [
+        _apport("APP-010", 5000.0, 10.0),
+        _apport("APP-011", 20000.0, 12.0),
+        _apport("APP-012", 45000.0, 16.0),
+    ]
+
+    moyenne_ponderee = CalculateurSilos.moyenne_ponderee_humidite(apports)
+    moyenne_simple = (10.0 + 12.0 + 16.0) / 3
+
+    # (5000*10 + 20000*12 + 45000*16) / 70000 = 14.4285...
+    assert moyenne_ponderee == pytest.approx(14.428571, abs=1e-4)
+    # La moyenne pondérée doit être plus proche de l'humidité de l'apport
+    # le plus lourd (16.0) que ne l'est la moyenne simple.
+    assert abs(moyenne_ponderee - 16.0) < abs(moyenne_simple - 16.0)
+
+
+def test_moyenne_ponderee_rejette_une_somme_de_poids_nulle_multi_apports() -> None:
+    apports = [
+        _apport("APP-020", 0.0, 14.0),
+        _apport("APP-021", 0.0, 15.0),
+    ]
+
+    with pytest.raises(ValueError, match="nulle"):
+        CalculateurSilos.moyenne_ponderee_humidite(apports)
+
+
 def test_rapport_silo_retourne_le_resume_attendu() -> None:
     apports = [
         _apport("APP-004", 1000.0, 14.0),

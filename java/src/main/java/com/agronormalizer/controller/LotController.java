@@ -34,12 +34,18 @@ public class LotController {
             Map<String, Object> reponse = new LinkedHashMap<>();
             reponse.put("id", lot.getId());
             reponse.put("rendement_pct", lot.calculerRendement());
-            reponse.put("alerte", lot.estEnAlerte("bovin"));
+            reponse.put("alerte", lot.estEnAlerte());
+            reponse.put("lot", lotService.trouverLot(lot.getId()));
             return ResponseEntity.status(HttpStatus.CREATED).body(reponse);
         } catch (ResponseStatusException exception) {
             return ResponseEntity.status(exception.getStatusCode())
                     .body(Map.of("error", exception.getReason()));
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<LotDto>> listerLots() {
+        return ResponseEntity.ok(lotService.listerLots());
     }
 
     @GetMapping("/{id}")

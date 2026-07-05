@@ -1,8 +1,18 @@
 import sys
 from datetime import datetime
+from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QFont
+
+# Rend le moteur Python (pipeline, modèles) importable depuis le module desktop.
+PYTHON_DIR = Path(__file__).resolve().parents[1] / "python"
+if str(PYTHON_DIR) not in sys.path:
+    sys.path.insert(0, str(PYTHON_DIR))
+
+from pipeline import run_pipeline
+from models.bons_de_pesee import BonDePesee
+from models.apport_cereale import ApportCereale
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -29,9 +39,29 @@ except ImportError:
 
 # Bloc de configuration des colonnes selon le module actif.
 TABLE_COLUMNS = {
-    "Logiviande": ["Lot", "Date", "Poids carcasse", "Poids découpe", "Classement", "Rendement%", "Alerte"],
+    "Logiviande": ["Lot", "Date", "Poids carcasse", "Poids découpe", "Classement", "Espèce", "Rendement%", "Alerte"],
     "Silos": ["Apport", "Date", "Site", "Céréale", "Poids net", "Humidité%", "Alerte"],
 }
+
+
+# Bloc du worker : exécute run_pipeline hors du thread UI pour ne pas geler la fenêtre.
+class PipelineWorker(QThread):
+    termine = Signal(list)
+    echec = Signal(str)
+
+    def __init__(self, filepath: str, module: str, use_llm: bool, parent=None) -> None:
+        super().__init__(parent)
+        self._filepath = filepath
+        self._module = module
+        self._use_llm = use_llm
+
+    def run(self) -> None:
+        try:
+            resultats = run_pipeline(self._filepath, self._module, self._use_llm)
+        except Exception as exc:
+            self.echec.emit(str(exc))
+            return
+        self.termine.emit(resultats)
 
 
 # Bloc principal de la fenêtre unique.
@@ -214,14 +244,95 @@ class AgroNormalizerApp(QMainWindow):
         self.file_path_label.setText(file_path)
         self._append_log(self.current_module, f"Fichier sélectionné: {file_path}")
 
-    # Bloc de traitement simulé.
+    # Bloc de traitement réel : lance run_pipeline dans un QThread.
     def _process_file(self) -> None:
         if self.file_path_label.text() == "Aucun fichier sélectionné":
             self._append_log(self.current_module, "Aucun fichier à traiter")
             return
 
-        mode_llm = "activé" if self.llm_checkbox.isChecked() else "désactivé"
-        self._append_log(self.current_module, f"Traitement demandé avec Adapter LLM {mode_llm}")
+        use_llm = self.llm_checkbox.isChecked()
+        mode_llm = "activé" if use_llm else "désactivé"
+        self._append_log(self.current_module, f"Traitement lancé avec Adapter LLM {mode_llm}")
+
+        self.process_button.setEnabled(False)
+        self._worker = PipelineWorker(self.file_path_label.text(), self.current_module, use_llm, self)
+        self._worker.termine.connect(self._on_pipeline_termine)
+        self._worker.echec.connect(self._on_pipeline_echec)
+        self._worker.start()
+
+    # Bloc de réception des résultats du pipeline (thread UI).
+    def _on_pipeline_termine(self, resultats: list) -> None:
+        self.process_button.setEnabled(True)
+
+        succes = [r for r in resultats if r.get("succes")]
+        echecs = [r for r in resultats if not r.get("succes")]
+
+        self._remplir_tableau(succes)
+        appliquer_theme(self, self.current_module)
+
+        self._append_log(
+            self.current_module,
+            f"Traitement terminé: {len(succes)} ligne(s) normalisée(s), {len(echecs)} rejetée(s)",
+        )
+        for r in echecs:
+            self._append_log(self.current_module, f"Rejet: {r.get('erreur_eventuelle')}")
+
+    def _on_pipeline_echec(self, message: str) -> None:
+        self.process_button.setEnabled(True)
+        self._append_log(self.current_module, f"ERREUR pipeline: {message}")
+
+    # Bloc de remplissage du tableau de résultats.
+    def _remplir_tableau(self, resultats_ok: list) -> None:
+        self._update_table_columns(self.current_module)
+        self.results_table.setRowCount(len(resultats_ok))
+
+        for row, resultat in enumerate(resultats_ok):
+            objet = resultat["objet_normalise"]
+            cellules, en_alerte = self._cellules_pour_objet(objet)
+            for column, texte in enumerate(cellules):
+                item = QTableWidgetItem(texte)
+                if en_alerte:
+                    item.setData(Qt.UserRole, "alerte")
+                self.results_table.setItem(row, column, item)
+
+    def _cellules_pour_objet(self, objet) -> tuple[list[str], bool]:
+        if isinstance(objet, BonDePesee):
+            rendement = objet.calculer_rendement()
+            en_alerte = objet.est_en_alerte()
+            return (
+                [
+                    objet.numero_lot,
+                    objet.date_pesee.isoformat(),
+                    f"{objet.poids_carcasse_kg:.1f}",
+                    f"{objet.poids_decoupe_kg:.1f}",
+                    objet.categorie_classement,
+                    objet.espece,
+                    f"{rendement:.1f}",
+                    "ALERTE" if en_alerte else "OK",
+                ],
+                en_alerte,
+            )
+
+        if isinstance(objet, ApportCereale):
+            try:
+                en_alerte = objet.est_en_alerte()
+                statut = "ALERTE" if en_alerte else "OK"
+            except ValueError:
+                en_alerte, statut = True, "Céréale inconnue"
+            return (
+                [
+                    objet.numero_apport,
+                    objet.date_apport.isoformat(),
+                    objet.site_collecte,
+                    objet.cereale,
+                    f"{objet.poids_net_kg:.1f}",
+                    f"{objet.taux_humidite_pct:.1f}",
+                    statut,
+                ],
+                en_alerte,
+            )
+
+        return ([str(objet)] + [""] * (self.results_table.columnCount() - 1), False)
 
     # Bloc d'adaptation des colonnes.
     def _update_table_columns(self, module: str) -> None:

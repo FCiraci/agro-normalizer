@@ -101,3 +101,9 @@ def test_adapter_factory_route_logiviande_et_silos() -> None:
     assert isinstance(get_adapter("Site A Nord"), AdapterSiteA)
     assert isinstance(get_adapter("site_b"), AdapterSiteB)
     assert isinstance(get_adapter("site_c"), AdapterSiteC)
+
+
+def test_adapter_factory_silo_ouest_route_vers_site_c_pas_site_b() -> None:
+    # "ouest" contient "est" : la factory ne doit pas confondre avec Site B (Est).
+    assert isinstance(get_adapter("Silo Ouest"), AdapterSiteC)
+    assert isinstance(get_adapter("Silo Est"), AdapterSiteB)

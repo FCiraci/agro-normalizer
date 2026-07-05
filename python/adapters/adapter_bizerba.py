@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from models.bons_de_pesee import BonDePesee
+from models.bons_de_pesee import BonDePesee, SEUILS_RENDEMENT
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,7 @@ class AdapterBizerba:
         poids_decoupe = self._decimal_fr(self._champ_obligatoire(ligne_brute, "Pds_Decoupe"), ligne_brute)
         categorie_classement = self._champ_obligatoire(ligne_brute, "Classe")
         source_balance = self._champ_obligatoire(ligne_brute, "Balance")
+        espece = self._espece_optionnelle(ligne_brute, "Espece")
 
         self._verifier_poids(poids_carcasse, poids_decoupe, ligne_brute)
 
@@ -27,12 +28,23 @@ class AdapterBizerba:
             poids_decoupe_kg=poids_decoupe,
             categorie_classement=categorie_classement,
             source_balance=source_balance,
+            espece=espece,
         )
+
+    def _espece_optionnelle(self, ligne_brute: dict[str, str], cle: str) -> str:
+        valeur = str(ligne_brute.get(cle) or "").strip().lower()
+        if not valeur:
+            return "bovin"
+        if valeur not in SEUILS_RENDEMENT:
+            self._ligne_ignored(ligne_brute, f"Espèce inconnue: {valeur}")
+            raise ValueError(f"Espèce inconnue: {valeur}")
+        return valeur
 
     def _champ_obligatoire(self, ligne_brute: dict[str, str], cle: str) -> str:
         valeur = ligne_brute.get(cle, "")
         if valeur is None or not str(valeur).strip():
             self._ligne_ignored(ligne_brute, f"Champ obligatoire manquant: {cle}")
+            raise ValueError(f"Champ obligatoire manquant: {cle}")
         return str(valeur).strip()
 
     def _date_depuis_fr(self, valeur: str, ligne_brute: dict[str, str]):

@@ -188,47 +188,106 @@ le fonctionnement du moteur.
 
 ## Etat actuel
 
-Le depot contient uniquement le squelette technique et une premiere GUI desktop :
+Le depot contient un pipeline fonctionnel de bout en bout :
 
-- arborescence Python ;
-- projet Spring Boot Maven minimal ;
-- application PySide6 minimale ;
-- dossier de samples ;
-- configuration `.gitignore` ;
-- documentation initiale.
+- modeles metier Python (`BonDePesee`, `ApportCereale`, `CalculateurSilos`) ;
+- adapters statiques (Bizerba, Dini Argeo, Multivac, Sites A/B/C) et adapter LLM
+  (mode mock deterministe sans cle API) ;
+- pipeline Python (`python/pipeline.py`) qui normalise puis POST vers l'API Java ;
+- API Spring Boot avec les endpoints `/lots` et `/apports` (POST, GET par id,
+  GET liste, GET alertes) ;
+- application desktop PySide6 qui pilote le pipeline dans un thread dedie ;
+- echantillons de test dans `data/samples/` (avec lignes corrompues volontaires).
 
-Aucune classe metier n'est encore implementee. Il n'y a pas encore de modele
-`BonDePesee`, de modele `ApportCereale`, d'adapter, de repository, de controller ou
-d'endpoint REST.
+## Configuration
+
+Copier `.env.example` vers `.env` a la racine et renseigner les cles si besoin :
+
+```text
+ANTHROPIC_API_KEY=   # optionnel : sans cle, l'adapter LLM tourne en mode mock
+```
+
+Aucune cle n'est stockee dans le code : tout vient de variables d'environnement
+ou du fichier `.env` (ignore par git).
 
 ## Comment lancer
 
-### Installer les dependances Python
+L'ordre est important : demarrer l'API Java d'abord, puis le pipeline ou
+l'application desktop (sinon les POST echouent avec une erreur explicite
+« API Java injoignable »).
 
-```bash
+### 1. API Spring Boot (obligatoire en premier)
+
+Prerequis : JDK 21 et Maven. Ils sont installes dans `C:\Users\Furkan\tools\`
+et references par les variables utilisateur `JAVA_HOME` et `Path` : dans tout
+**nouveau** terminal, `mvn` et `java` (21) sont directement disponibles.
+
+```powershell
+cd java
+mvn spring-boot:run
+```
+
+L'API (Spring Boot 3.5.x) ecoute sur `http://localhost:8080`. Le contrat JSON
+est en snake_case (`numero_lot`, `poids_carcasse_kg`, ...), aligne sur les
+`to_dict()` Python. Le champ `espece` (`bovin` ou `porc`, defaut `bovin`) est
+facultatif sur `POST /lots` et determine la plage de rendement utilisee pour
+les alertes (bovin 35-60 %, porc 60-85 %) ; une espece inconnue renvoie 422.
+
+### 2. Dependances Python
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r python/requirements.txt
 ```
 
-### Application desktop PySide6
+### 3. Application desktop PySide6
 
-```bash
+```powershell
 python desktop/app.py
 ```
 
-### API Spring Boot
+Choisir le module (Logiviande ou Silos), selectionner un fichier de
+`data/samples/`, puis « Traiter le fichier ». Les lignes normalisees sont
+envoyees a l'API Java et affichees dans le tableau ; les lignes en alerte
+sont surlignees.
 
-```bash
-cd java
-mvn spring-boot:run
+### Pipeline en ligne de commande (optionnel)
+
+```powershell
+.\.venv\Scripts\python.exe python/audit_adapters.py   # normalisation seule, sans API
+.\.venv\Scripts\python.exe python/audit_e2e.py        # bout-en-bout, API requise
 ```
 
-### Build Java
+## Tests
 
-```bash
+### Tests Python (pytest)
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest python/tests/ -v
+```
+
+Couvre les modeles metier (seuils exacts, poids nuls/negatifs, rendement > 100 %),
+le lecteur CSV (fichier vide, lignes corrompues, encodage non-UTF8), les adapters
+statiques et LLM (mock), le pipeline (API injoignable, rejets) et la moyenne
+ponderee Silos.
+
+### Tests Spring Boot (JUnit + MockMvc)
+
+```powershell
 cd java
-mvn clean install
+mvn test
+```
+
+Couvre les codes HTTP des endpoints `/lots` et `/apports` : 201 creation,
+400 champ manquant, 422 poids negatif ou espece inconnue, 200/404 sur GET
+par id, 200 + liste (vide ou filtree) sur `/alertes`, et la prise en compte
+de l'espece par lot dans le calcul d'alerte.
+
+### Test de fumee de l'interface (API Java requise)
+
+```powershell
+.\.venv\Scripts\python.exe desktop/test_ui_smoke.py
 ```
 
 ## Vision

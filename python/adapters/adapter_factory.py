@@ -33,10 +33,11 @@ def get_adapter(source: str) -> Adapter:
     if source_normalise.startswith("site_a") or source_normalise.startswith("sitea") or "nord" in source_normalise:
         return AdapterSiteA()
 
-    if source_normalise.startswith("site_b") or source_normalise.startswith("siteb") or "est" in source_normalise:
-        return AdapterSiteB()
-
     if source_normalise.startswith("site_c") or source_normalise.startswith("sitec") or "ouest" in source_normalise:
         return AdapterSiteC()
+
+    # "ouest" contient "est" : le test Site C doit passer avant et être exclu ici.
+    if source_normalise.startswith("site_b") or source_normalise.startswith("siteb") or ("est" in source_normalise and "ouest" not in source_normalise):
+        return AdapterSiteB()
 
     raise ValueError(f"Source de balance inconnue: {source}")

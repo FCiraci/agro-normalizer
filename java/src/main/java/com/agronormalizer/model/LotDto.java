@@ -10,18 +10,20 @@ public class LotDto {
     private Double poidsDecoupeKg;
     private String categorieClassement;
     private String sourceBalance;
+    private String espece;
 
     public LotDto() {
     }
 
     public LotDto(String numeroLot, LocalDate datePesee, Double poidsCarcasseKg, Double poidsDecoupeKg,
-            String categorieClassement, String sourceBalance) {
+            String categorieClassement, String sourceBalance, String espece) {
         this.numeroLot = numeroLot;
         this.datePesee = datePesee;
         this.poidsCarcasseKg = poidsCarcasseKg;
         this.poidsDecoupeKg = poidsDecoupeKg;
         this.categorieClassement = categorieClassement;
         this.sourceBalance = sourceBalance;
+        this.espece = espece;
     }
 
     public String getNumeroLot() {
@@ -70,5 +72,13 @@ public class LotDto {
 
     public void setSourceBalance(String sourceBalance) {
         this.sourceBalance = sourceBalance;
+    }
+
+    public String getEspece() {
+        return espece;
+    }
+
+    public void setEspece(String espece) {
+        this.espece = espece;
     }
 }
