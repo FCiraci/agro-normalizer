@@ -252,6 +252,7 @@ les alertes (bovin 35-60 %, porc 60-85 %) ; une espece inconnue renvoie 422.
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r python/requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ### 3. Application desktop PySide6
