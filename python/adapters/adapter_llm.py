@@ -9,7 +9,7 @@ from urllib import request as urllib_request
 from typing import Any
 
 from config.llm_keys import ANTHROPIC_API_KEY
-from models.bons_de_pesee import BonDePesee, SEUILS_RENDEMENT
+from models.bons_de_pesee import BonDePesee, normaliser_espece
 from models.apport_cereale import ApportCereale
 
 
@@ -22,6 +22,7 @@ SCHEMAS_JSON_ATTENDUS = {
         "poids_carcasse_kg": "poids carcasse en kg, float",
         "poids_decoupe_kg": "poids découpe en kg, float",
         "categorie_classement": "classement EUROP (E/U/R/O/P + chiffre)",
+        "espece": "espece du lot si presente, ex: bovin, porc, cattle, pig",
         "source_balance": "nom ou identifiant de la balance source",
     },
     "silos": {
@@ -165,7 +166,11 @@ class AdapterLLM:
                 raise ValueError("Le mapping JSON doit contenir uniquement des chaînes de caractères")
             mapping_nettoye[cle.strip()] = valeur.strip()
 
-        champs_obligatoires = set(SCHEMAS_JSON_ATTENDUS[self.module])
+        champs_obligatoires = {
+            champ
+            for champ in SCHEMAS_JSON_ATTENDUS[self.module]
+            if champ not in CHAMPS_FACULTATIFS
+        }
         absents = [champ for champ in champs_obligatoires if champ not in mapping_nettoye]
         if absents:
             self._logger_ligne_ignored({"prompt": prompt_utilisateur}, f"Champs obligatoires absents du JSON du LLM: {', '.join(absents)}")
@@ -290,12 +295,11 @@ class AdapterLLM:
         valeur = ""
         if champ_source:
             valeur = str(ligne_source.get(champ_source) or "").strip().lower()
-        if not valeur:
-            return "bovin"
-        if valeur not in SEUILS_RENDEMENT:
-            self._logger_ligne_ignored(ligne_source, f"Espèce inconnue: {valeur}")
-            raise ValueError(f"Espèce inconnue: {valeur}")
-        return valeur
+        try:
+            return normaliser_espece(valeur)
+        except ValueError as exc:
+            self._logger_ligne_ignored(ligne_source, str(exc))
+            raise
 
     def _construire_bon_de_pesee(self, ligne_source: dict[str, Any], valeurs: dict[str, str]) -> BonDePesee:
         numero_lot = valeurs["numero_lot"]

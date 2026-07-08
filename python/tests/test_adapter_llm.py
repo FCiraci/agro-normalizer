@@ -54,6 +54,30 @@ def test_adapter_llm_mock_normalise_une_ligne_multivac() -> None:
     assert bon.source_balance == "MULTI-01"
 
 
+def test_adapter_llm_mock_traduit_species_anglaise() -> None:
+    adapter = AdapterLLM(mock=True)
+    ligne_cattle = {
+        "lot_number": "LOT-2026-244",
+        "weigh_date": "06/14/2026",
+        "carcass_weight": "415.0",
+        "cut_weight": "334.1",
+        "grade": "E1",
+        "species": "cattle",
+        "scale_id": "dini_argeo",
+    }
+    ligne_pig = {
+        **ligne_cattle,
+        "lot_number": "LOT-2026-249",
+        "carcass_weight": "79.0",
+        "cut_weight": "64.4",
+        "grade": "O",
+        "species": "pig",
+    }
+
+    assert adapter.adapter(ligne_cattle).espece == "bovin"
+    assert adapter.adapter(ligne_pig).espece == "porc"
+
+
 def test_adapter_llm_mock_normalise_un_apport_silos() -> None:
     adapter = AdapterLLM(mock=True, module="silos")
     ligne = {
@@ -94,6 +118,30 @@ def test_adapter_llm_rejette_un_json_invalide(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(ValueError, match="JSON invalide"):
         adapter._appeler_llm_et_parser_mapping("prompt")
+
+
+def test_adapter_llm_mapping_reel_accepte_espece_absente(monkeypatch: pytest.MonkeyPatch) -> None:
+    adapter = AdapterLLM(mock=False, api_key="dummy")
+
+    monkeypatch.setattr(
+        adapter,
+        "_appeler_anthropic",
+        lambda _: """
+        {
+          "numero_lot": "Num_Lot",
+          "date_pesee": "Date_Pesee",
+          "poids_carcasse_kg": "Pds_Carcasse",
+          "poids_decoupe_kg": "Pds_Decoupe",
+          "categorie_classement": "Classe",
+          "source_balance": "Balance"
+        }
+        """,
+    )
+
+    mapping = adapter._appeler_llm_et_parser_mapping("prompt")
+
+    assert mapping["numero_lot"] == "Num_Lot"
+    assert "espece" not in mapping
 
 
 def test_adapter_llm_rejette_un_mapping_incomplet() -> None:

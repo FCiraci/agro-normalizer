@@ -46,6 +46,7 @@ def test_adapter_bizerba_lit_la_colonne_espece_optionnelle() -> None:
 
     assert AdapterBizerba().adapter(ligne).espece == "bovin"
     assert AdapterBizerba().adapter({**ligne, "Espece": "Porc"}).espece == "porc"
+    assert AdapterBizerba().adapter({**ligne, "Date_Pesee": "2026-01-05", "Espece": "pig"}).espece == "porc"
 
 
 def test_adapter_bizerba_rejette_une_espece_inconnue() -> None:
@@ -88,6 +89,39 @@ def test_adapter_dini_argeo_rejette_un_champ_obligatoire_manquant() -> None:
                 "grade": "U3",
             }
         )
+
+
+def test_adapter_dini_argeo_traduit_species_anglaise() -> None:
+    bon = AdapterDiniArgeo().adapter(
+        {
+            "lot_number": "LOT-2026-244",
+            "weigh_date": "06/14/2026",
+            "carcass_weight": "415.0",
+            "cut_weight": "334.1",
+            "grade": "E1",
+            "species": "cattle",
+            "scale_id": "dini_argeo",
+        }
+    )
+
+    assert bon.espece == "bovin"
+
+
+def test_adapter_multivac_accepte_date_iso_et_traduit_espece() -> None:
+    bon = AdapterMultivac().adapter(
+        {
+            "LOT": "LOT-2026-249",
+            "DATE": "2026-06-29",
+            "POIDS_C": "79.0",
+            "POIDS_D": "64.4",
+            "CLASSE": "O",
+            "ESPECE": "pig",
+            "BALANCE": "multivac",
+        }
+    )
+
+    assert bon.date_pesee == date(2026, 6, 29)
+    assert bon.espece == "porc"
 
 
 def test_adapter_multivac_rejette_un_poids_negatif() -> None:

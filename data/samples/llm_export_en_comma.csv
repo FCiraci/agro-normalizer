@@ -1,0 +1,7 @@
+lot_number,weigh_date,carcass_weight,cut_weight,grade,species,scale_id
+LLM-EN-001,07/01/2026,382.0,191.0,U1,cattle,llm_en
+LLM-EN-002,07/02/2026,95.0,74.1,R,pig,llm_en
+LLM-EN-003,07/03/2026,318.5,165.6,R2,beef,llm_en
+LLM-EN-004,07/04/2026,88.4,70.7,E,pork,llm_en
+LLM-EN-005,07/05/2026,407.2,219.9,E2,cow,llm_en
+LLM-EN-006,07/06/2026,102.0,78.5,O,swine,llm_en

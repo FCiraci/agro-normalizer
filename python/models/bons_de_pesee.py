@@ -16,6 +16,33 @@ SEUILS_RENDEMENT = {
 }
 
 
+ALIAS_ESPECES = {
+    "bovin": "bovin",
+    "bovins": "bovin",
+    "boeuf": "bovin",
+    "cattle": "bovin",
+    "beef": "bovin",
+    "cow": "bovin",
+    "porc": "porc",
+    "porcs": "porc",
+    "cochon": "porc",
+    "pig": "porc",
+    "pork": "porc",
+    "swine": "porc",
+}
+
+
+def normaliser_espece(valeur: str | None, espece_par_defaut: str = "bovin") -> str:
+    valeur_normalisee = str(valeur or "").strip().lower()
+    if not valeur_normalisee:
+        return espece_par_defaut
+
+    espece = ALIAS_ESPECES.get(valeur_normalisee, valeur_normalisee)
+    if espece not in SEUILS_RENDEMENT:
+        raise ValueError(f"Espèce inconnue: {valeur_normalisee}")
+    return espece
+
+
 @dataclass
 class BonDePesee:
     numero_lot: str
@@ -39,10 +66,8 @@ class BonDePesee:
         Retourne True si le rendement est en dehors de la plage acceptable.
         Sans argument, utilise l'espèce portée par le lot.
         """
-        espece_effective = espece or self.espece
-        seuils = SEUILS_RENDEMENT.get(espece_effective)
-        if seuils is None:
-            raise ValueError(f"Espèce inconnue: {espece_effective}")
+        espece_effective = normaliser_espece(espece or self.espece)
+        seuils = SEUILS_RENDEMENT[espece_effective]
 
         rendement = self.calculer_rendement()
         return rendement < seuils["alerte_basse"] or rendement > seuils["alerte_haute"]
@@ -52,10 +77,8 @@ class BonDePesee:
         Retourne l'écart entre le rendement et le standard de l'espèce.
         Sans argument, utilise l'espèce portée par le lot.
         """
-        espece_effective = espece or self.espece
-        seuils = SEUILS_RENDEMENT.get(espece_effective)
-        if seuils is None:
-            raise ValueError(f"Espèce inconnue: {espece_effective}")
+        espece_effective = normaliser_espece(espece or self.espece)
+        seuils = SEUILS_RENDEMENT[espece_effective]
 
         rendement = self.calculer_rendement()
         return rendement - seuils["standard"]

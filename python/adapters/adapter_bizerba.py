@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from models.bons_de_pesee import BonDePesee, SEUILS_RENDEMENT
+from models.bons_de_pesee import BonDePesee, normaliser_espece
 
 
 logger = logging.getLogger(__name__)
@@ -32,13 +32,11 @@ class AdapterBizerba:
         )
 
     def _espece_optionnelle(self, ligne_brute: dict[str, str], cle: str) -> str:
-        valeur = str(ligne_brute.get(cle) or "").strip().lower()
-        if not valeur:
-            return "bovin"
-        if valeur not in SEUILS_RENDEMENT:
-            self._ligne_ignored(ligne_brute, f"Espèce inconnue: {valeur}")
-            raise ValueError(f"Espèce inconnue: {valeur}")
-        return valeur
+        try:
+            return normaliser_espece(ligne_brute.get(cle))
+        except ValueError as exc:
+            self._ligne_ignored(ligne_brute, str(exc))
+            raise
 
     def _champ_obligatoire(self, ligne_brute: dict[str, str], cle: str) -> str:
         valeur = ligne_brute.get(cle, "")
@@ -48,11 +46,14 @@ class AdapterBizerba:
         return str(valeur).strip()
 
     def _date_depuis_fr(self, valeur: str, ligne_brute: dict[str, str]):
-        try:
-            return datetime.strptime(valeur, "%d/%m/%Y").date()
-        except ValueError as exc:
-            self._ligne_ignored(ligne_brute, f"Date invalide pour Bizerba: {valeur}")
-            raise ValueError(f"Date invalide pour Bizerba: {valeur}") from exc
+        for format_date in ("%d/%m/%Y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(valeur, format_date).date()
+            except ValueError:
+                continue
+
+        self._ligne_ignored(ligne_brute, f"Date invalide pour Bizerba: {valeur}")
+        raise ValueError(f"Date invalide pour Bizerba: {valeur}")
 
     def _decimal_fr(self, valeur: str, ligne_brute: dict[str, str]) -> float:
         try:

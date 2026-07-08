@@ -1,4 +1,5 @@
 import sys
+from html import escape
 from datetime import datetime
 from pathlib import Path
 
@@ -274,12 +275,14 @@ class AgroNormalizerApp(QMainWindow):
             self.current_module,
             f"Traitement terminé: {len(succes)} ligne(s) normalisée(s), {len(echecs)} rejetée(s)",
         )
+        self._append_log(self.current_module, f"Passées: {len(succes)} ligne(s)", "success")
+        self._append_log(self.current_module, f"Rejetées: {len(echecs)} ligne(s)", "error")
         for r in echecs:
-            self._append_log(self.current_module, f"Rejet: {r.get('erreur_eventuelle')}")
+            self._append_log(self.current_module, f"Rejet: {r.get('erreur_eventuelle')}", "error")
 
     def _on_pipeline_echec(self, message: str) -> None:
         self.process_button.setEnabled(True)
-        self._append_log(self.current_module, f"ERREUR pipeline: {message}")
+        self._append_log(self.current_module, f"ERREUR pipeline: {message}", "error")
 
     # Bloc de remplissage du tableau de résultats.
     def _remplir_tableau(self, resultats_ok: list) -> None:
@@ -344,9 +347,16 @@ class AgroNormalizerApp(QMainWindow):
         self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
     # Bloc d'écriture du journal.
-    def _append_log(self, module: str, message: str) -> None:
+    def _append_log(self, module: str, message: str, niveau: str = "info") -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log.append(f"{timestamp} — [{module}] — {message}")
+        couleurs = {
+            "info": BASE_UI["texte_inverse"],
+            "success": "#1F8A4C",
+            "error": "#FF4D4D",
+        }
+        couleur = couleurs.get(niveau, couleurs["info"])
+        ligne = f"{timestamp} — [{module}] — {message}"
+        self.log.append(f'<span style="color: {couleur};">{escape(ligne)}</span>')
 
 
 # Bloc d'entrée de l'application.

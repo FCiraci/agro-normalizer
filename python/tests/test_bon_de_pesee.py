@@ -106,3 +106,10 @@ def test_espece_portee_par_le_lot_est_utilisee_sans_argument() -> None:
     assert bon_porc.est_en_alerte("bovin") is True
 
 
+def test_especes_anglaises_sont_traduites_pour_les_alertes() -> None:
+    bon = _bon_de_pesee(poids_carcasse_kg=100.0, poids_decoupe_kg=73.0)
+
+    assert bon.est_en_alerte("cattle") is True
+    assert bon.est_en_alerte("pig") is False
+
+

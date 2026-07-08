@@ -1,0 +1,7 @@
+numero_lot	date	poids_carcasse_kg	poids_decoupe_kg	categorie_classement	espece	source_balance
+LLM-NORM-001	2026-07-01	382.0	191.0	U1	bovin	llm_norm
+LLM-NORM-002	2026-07-02	95.0	74.1	R	porc	llm_norm
+LLM-NORM-003	2026-07-03	318.5	165.6	R2	bovin	llm_norm
+LLM-NORM-004	2026-07-04	88.4	70.7	E	porc	llm_norm
+LLM-NORM-005	2026-07-05	407.2	219.9	E2	bovin	llm_norm
+LLM-NORM-006	2026-07-06	102.0	78.5	O	porc	llm_norm
